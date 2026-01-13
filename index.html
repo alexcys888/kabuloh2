@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="Kabuloh Farm - Password Protected Project Progress Tracker">
+    <title>Kabuloh Farm - Secure Progress Tracker</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        /* ===============================
+           PASSWORD PROTECTION STYLES
+        =============================== */
+        .password-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #4a6491);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .password-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .password-container h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .password-container p {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+        
+        .password-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+            text-align: center;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+        
+        .password-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        .password-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            margin-bottom: 15px;
+        }
+        
+        .password-btn:hover {
+            background: #2980b9;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-top: 15px;
+            font-weight: 600;
+            display: none;
+        }
+        
+        .attempts-counter {
+            color: #f39c12;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        
+        .forgot-password {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-top: 20px;
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease;
+        }
+        
+        /* Hide main content initially */
+        .main-content {
+            display: none;
+        }
+        
+        /* ===============================
+           MAIN APPLICATION STYLES
+        =============================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --planned: #3498db;
+            --actual: #2ecc71;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --gray: #95a5a6;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding-bottom: 80px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 i {
+            font-size: 1.6rem;
+        }
+        
+        .project-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 80px;
+            z-index: 90;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .tab {
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--secondary);
+            background-color: #f8fafc;
+        }
+        
+        /* Overall Progress */
+        .overall-progress {
+            background: white;
+            margin: 15px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+        
+        .progress-title {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .progress-comparison {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .progress-item {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .progress-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+        
+        .progress-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        .progress-value.planned {
+            color: var(--planned);
+        }
+        
+        .progress-value.actual {
+            color: var(--actual);
+        }
+        
+        .progress-bars {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .progress-bar-container {
+            flex: 1;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .progress-bar.planned {
+            background: var(--planned);
+        }
+        
+        .progress-bar.actual {
+            background: var(--actual);
+        }
+        
+        /* S-Curve Container */
+        .s-curve-container {
+            background: white;
+            margin: 15px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            display: none;
+        }
+        
+        .s-curve-container.active {
+            display: block;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .legend-planned {
+            background: var(--planned);
+        }
+        
+        .legend-actual {
+            background: var(--actual);
+        }
+        
+        /* Task List */
+        .task-list {
+            margin: 0 15px;
+        }
+        
+        .task-category {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+        
+        .category-header {
+            background-color: var(--light);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e0e0e0;
+            touch-action: manipulation;
+        }
+        
+        .category-title {
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .category-progress {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .planned-text {
+            color: var(--planned);
+            font-weight: 600;
+        }
+        
+        .actual-text {
+            color: var(--actual);
+            font-weight: 600;
+        }
+        
+        .category-dates {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 5px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .category-dates span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .task-items {
+            display: none;
+            padding: 0;
+        }
+        
+        .task-items.expanded {
+            display: block;
+        }
+        
+        .task-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .task-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .task-name {
+            font-weight: 500;
+            color: var(--dark);
+            flex: 1;
+        }
+        
+        .task-dates {
+            font-size: 0.8rem;
+            color: var(--gray);
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .progress-input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .progress-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            min-height: 44px;
+        }
+        
+        .progress-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn-update {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 1rem;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        
+        .btn-update:active {
+            transform: scale(0.98);
+        }
+        
+        /* Report Generation Panel */
+        .report-panel {
+            background: white;
+            margin: 15px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            display: none;
+        }
+        
+        .report-panel.active {
+            display: block;
+        }
+        
+        .report-options {
+            margin: 20px 0;
+        }
+        
+        .option-group {
+            margin-bottom: 25px;
+        }
+        
+        .option-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .month-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .month-btn {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 80px;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        
+        .month-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .month-btn:hover {
+            background: #f8f9fa;
+        }
+        
+        .month-btn.active {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+        }
+        
+        .report-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .report-btn {
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        
+        .report-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-txt {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-pdf {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+        }
+        
+        .btn-email {
+            background: #3498db;
+            color: white;
+        }
+        
+        /* Progress Controls */
+        .progress-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 -3px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .progress-controls button {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        
+        .btn-save {
+            background: var(--success);
+            color: white;
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .btn-report {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: var(--danger);
+            color: white;
+            margin-left: 10px;
+        }
+        
+        .btn-logout {
+            background: var(--primary);
+            color: white;
+            margin-left: 10px;
+        }
+        
+        .btn-save:active, .btn-report:active, .btn-reset:active, .btn-logout:active {
+            transform: scale(0.95);
+        }
+        
+        /* Progress Bars for Tasks */
+        .progress-bars-small {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .progress-bar-small-container {
+            flex: 1;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-small {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .progress-bar-small.planned {
+            background: var(--planned);
+        }
+        
+        .progress-bar-small.actual {
+            background: var(--actual);
+        }
+        
+        .progress-bar-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 5px;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #95a5a6;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            left: 20px;
+            background: #d4edda;
+            color: #155724;
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .notification i {
+            font-size: 1.2rem;
+        }
+        
+        /* Animations */
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-20px); opacity: 0; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .project-info {
+                flex-direction: column;
+                gap: 5px;
+                font-size: 0.8rem;
+            }
+            
+            .tabs {
+                overflow-x: auto;
+            }
+            
+            .tab {
+                min-width: 100px;
+                padding: 15px;
+                font-size: 0.9rem;
+            }
+            
+            .progress-comparison {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .progress-bars {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .category-progress {
+                flex-direction: column;
+                gap: 5px;
+                align-items: flex-end;
+                font-size: 0.8rem;
+            }
+            
+            .task-dates {
+                flex-direction: column;
+                gap: 3px;
+            }
+            
+            .report-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .progress-controls {
+                flex-direction: column;
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            .btn-save, .btn-report, .btn-reset, .btn-logout {
+                width: 100%;
+                margin: 5px 0;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
+            
+            .notification {
+                top: 80px;
+                left: 10px;
+                right: 10px;
+            }
+            
+            .password-container {
+                padding: 20px;
+            }
+            
+            .password-container h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ==============================
+         PASSWORD PROTECTION OVERLAY
+    ============================== -->
+    <div class="password-overlay" id="passwordOverlay">
+        <div class="password-container">
+            <h1>🔐 Kabuloh Farm Tracker</h1>
+            <p>Enter password to access the project management system</p>
+            
+            <input type="password" 
+                   class="password-input" 
+                   id="passwordInput" 
+                   placeholder="Enter access password"
+                   autocomplete="off">
+            
+            <button class="password-btn" id="loginBtn">Access System</button>
+            
+            <div class="error-message" id="errorMessage">
+                Incorrect password. Please try again.
+            </div>
+            
+            <div class="attempts-counter" id="attemptsCounter">
+                Attempts remaining: 5
+            </div>
+            
+            <a href="#" class="forgot-password" id="forgotPassword">
+                Forgot password? Contact administrator
+            </a>
+            
+            <!-- ADMIN NOTE: Change this password in the JavaScript section below -->
+            <div style="font-size: 0.8rem; color: #95a5a6; margin-top: 20px;">
+                Default password: "kabuloh2025" - CHANGE THIS IN PRODUCTION
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==============================
+         MAIN APPLICATION CONTENT
+         (Hidden until password is correct)
+    ============================== -->
+    <div class="main-content" id="mainContent">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-seedling"></i> Kabuloh Farm - Progress Tracker</h1>
+            <div class="project-info">
+                <div id="project-phase">Phase 2 - All Tasks Included</div>
+                <div id="current-date">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" data-tab="progress">Progress</div>
+            <div class="tab" data-tab="s-curve">S-Curve</div>
+            <div class="tab" data-tab="reports">Reports</div>
+        </div>
+        
+        <!-- Overall Progress -->
+        <div class="overall-progress" id="progress-panel">
+            <div class="progress-title">
+                <span>Overall Progress - Phase 2</span>
+                <span id="current-month">October 2025</span>
+            </div>
+            
+            <div class="progress-comparison">
+                <div class="progress-item">
+                    <div class="progress-label">Planned Progress</div>
+                    <div class="progress-value planned" id="planned-overall">32%</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Actual Progress</div>
+                    <div class="progress-value actual" id="actual-overall">0%</div>
+                </div>
+            </div>
+            
+            <div class="progress-bars">
+                <div class="progress-bar-container">
+                    <div class="progress-bar planned" id="planned-bar" style="width: 32%">32%</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar actual" id="actual-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray);">
+                <i class="fas fa-info-circle"></i> Tasks: <span id="total-tasks">86</span> | 
+                Variance: <span id="progress-variance" style="color: var(--danger); font-weight: 600;">-32%</span>
+                <span style="margin-left: 15px;">Updated: <span id="last-updated">Today</span></span>
+            </div>
+        </div>
+        
+        <!-- S-Curve Container -->
+        <div class="s-curve-container" id="s-curve-panel">
+            <div class="progress-title">
+                <span>Progress S-Curve</span>
+                <span>Planned vs Actual</span>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="s-curve-chart"></canvas>
+            </div>
+            
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-planned"></div>
+                    <span>Planned Progress</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-actual"></div>
+                    <span>Actual Progress</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 0.9rem; color: var(--gray); text-align: center;">
+                <i class="fas fa-chart-area"></i> Cumulative progress over time. Actual progress starts at 0% and follows user inputs.
+            </div>
+        </div>
+        
+        <!-- Report Generation Panel -->
+        <div class="report-panel" id="report-panel">
+            <div class="progress-title">
+                <span>Monthly Report Generator</span>
+                <span id="report-month">Select Month</span>
+            </div>
+            
+            <div class="report-options">
+                <div class="option-group">
+                    <div class="option-label">Select Month for Report:</div>
+                    <div class="month-selector" id="month-selector">
+                        <!-- Months will be dynamically generated -->
+                    </div>
+                </div>
+                
+                <div class="option-group">
+                    <div class="option-label">Report Type:</div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; flex: 1;">
+                            <i class="fas fa-file-alt" style="color: #27ae60; margin-right: 8px;"></i>
+                            <span>Text Report (.txt)</span>
+                        </div>
+                        <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; flex: 1;">
+                            <i class="fas fa-file-pdf" style="color: #e74c3c; margin-right: 8px;"></i>
+                            <span>PDF Report (.pdf)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="report-actions">
+                <button class="report-btn btn-txt" id="generate-txt">
+                    <i class="fas fa-file-alt"></i> Generate TXT
+                </button>
+                <button class="report-btn btn-pdf" id="generate-pdf">
+                    <i class="fas fa-file-pdf"></i> Generate PDF
+                </button>
+                <button class="report-btn btn-whatsapp" id="share-whatsapp">
+                    <i class="fab fa-whatsapp"></i> Share via WhatsApp
+                </button>
+                <button class="report-btn btn-email" id="share-email">
+                    <i class="fas fa-envelope"></i> Share via Email
+                </button>
+            </div>
+            
+            <div style="margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 0.9rem;">
+                <i class="fas fa-info-circle" style="color: #3498db; margin-right: 8px;"></i>
+                <span>Reports include all tasks: PRELIMINARIES, PILING WORKS, ADMIN BLOCK, PUMP HOUSE, MYGAP STORE, PESTICIDE CENTER, GENERAL TOOL SHED, GUARD HOUSE, INFRASTRUCTURE, GATE & FENCING, COMPLETION</span>
+            </div>
+        </div>
+        
+        <!-- Task List -->
+        <div class="task-list" id="task-list">
+            <!-- ALL TASKS will be dynamically generated here -->
+        </div>
+        
+        <!-- Progress Controls -->
+        <div class="progress-controls">
+            <button class="btn-save" id="save-progress-btn">
+                <i class="fas fa-save"></i> Save Progress
+            </button>
+            <button class="btn-report" id="quick-report-btn">
+                <i class="fas fa-chart-bar"></i> Quick Report
+            </button>
+            <button class="btn-reset" id="reset-btn">
+                <i class="fas fa-redo"></i> Reset
+            </button>
+            <button class="btn-logout" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // PASSWORD PROTECTION SYSTEM - FIXED
+        // =============================================
+        
+        // CONFIGURATION - CHANGE THESE SETTINGS BEFORE DEPLOYMENT
+        const PASSWORD_CONFIG = {
+            password: "Kabuloh@2024!Secure",      // CHANGE THIS PASSWORD FOR PRODUCTION
+            maxAttempts: 5,               // Maximum login attempts
+            lockoutTime: 15,              // Lockout time in minutes after max attempts
+            sessionTimeout: 30,           // Auto-logout after 30 minutes of inactivity
+            adminEmail: "admin@kabulohfarm.com"  // Contact for password reset
+        };
+        
+        // Current state
+        let loginAttempts = 0;
+        let isLocked = false;
+        let sessionTimer = null;
+        let currentUser = null;
+        
+        // DOM Elements for password system
+        const passwordOverlay = document.getElementById('passwordOverlay');
+        const mainContent = document.getElementById('mainContent');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const attemptsCounter = document.getElementById('attemptsCounter');
+        const forgotPassword = document.getElementById('forgotPassword');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        // Initialize password system
+        function initPasswordSystem() {
+            console.log("Initializing password system...");
+            
+            // For testing: Uncomment to clear session
+            // localStorage.removeItem('kabuloh_session');
+            // localStorage.removeItem('kabuloh_lock');
+            
+            // Check for existing session
+            const savedSession = localStorage.getItem('kabuloh_session');
+            if (savedSession) {
+                try {
+                    const session = JSON.parse(savedSession);
+                    const now = Date.now();
+                    
+                    // Check if session is still valid
+                    if (now - session.loginTime < PASSWORD_CONFIG.sessionTimeout * 60 * 1000) {
+                        console.log("Valid session found, auto-login");
+                        currentUser = session;
+                        showMainContent();
+                        startSessionTimer();
+                        return;
+                    } else {
+                        // Session expired
+                        console.log("Session expired");
+                        localStorage.removeItem('kabuloh_session');
+                    }
+                } catch (e) {
+                    console.error("Error parsing session:", e);
+                    localStorage.removeItem('kabuloh_session');
+                }
+            }
+            
+            // Check if account is locked
+            const lockInfo = localStorage.getItem('kabuloh_lock');
+            if (lockInfo) {
+                try {
+                    const lock = JSON.parse(lockInfo);
+                    const now = Date.now();
+                    
+                    if (now - lock.time < PASSWORD_CONFIG.lockoutTime * 60 * 1000) {
+                        isLocked = true;
+                        showLockoutMessage(lock.time);
+                        return;
+                    } else {
+                        // Lockout expired
+                        localStorage.removeItem('kabuloh_lock');
+                        isLocked = false;
+                    }
+                } catch (e) {
+                    console.error("Error parsing lock info:", e);
+                    localStorage.removeItem('kabuloh_lock');
+                }
+            }
+            
+            // Always show password overlay
+            passwordOverlay.style.display = 'flex';
+            mainContent.style.display = 'none';
+            
+            // Setup event listeners
+            setupPasswordListeners();
+            updateAttemptsDisplay();
+        }
+        
+        // Setup password event listeners
+        function setupPasswordListeners() {
+            loginBtn.addEventListener('click', attemptLogin);
+            
+            passwordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    attemptLogin();
+                }
+            });
+            
+            forgotPassword.addEventListener('click', function(e) {
+                e.preventDefault();
+                showNotification(`Contact administrator at: ${PASSWORD_CONFIG.adminEmail}`, false);
+            });
+            
+            // Reset inactivity timer on user activity
+            document.addEventListener('click', resetInactivityTimer);
+            document.addEventListener('keypress', resetInactivityTimer);
+            document.addEventListener('mousemove', resetInactivityTimer);
+        }
+        
+        // Attempt to login
+        function attemptLogin() {
+            if (isLocked) {
+                errorMessage.textContent = 'Account is temporarily locked. Try again later.';
+                errorMessage.style.display = 'block';
+                passwordInput.classList.add('shake');
+                setTimeout(() => passwordInput.classList.remove('shake'), 500);
+                return;
+            }
+            
+            const enteredPassword = passwordInput.value.trim();
+            
+            if (enteredPassword === PASSWORD_CONFIG.password) {
+                // Successful login
+                loginAttempts = 0;
+                currentUser = {
+                    loginTime: Date.now(),
+                    lastActivity: Date.now()
+                };
+                
+                // Save session
+                localStorage.setItem('kabuloh_session', JSON.stringify(currentUser));
+                
+                // Clear any lock
+                localStorage.removeItem('kabuloh_lock');
+                
+                // Show main content
+                showMainContent();
+                
+                // Start session timer
+                startSessionTimer();
+                
+                // Show welcome message
+                showNotification('Welcome to Kabuloh Farm Tracker!', false);
+                
+            } else {
+                // Failed login
+                loginAttempts++;
+                
+                // Update UI
+                errorMessage.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.classList.add('shake');
+                setTimeout(() => passwordInput.classList.remove('shake'), 500);
+                
+                // Update attempts counter
+                updateAttemptsDisplay();
+                
+                // Check if account should be locked
+                if (loginAttempts >= PASSWORD_CONFIG.maxAttempts) {
+                    lockAccount();
+                }
+            }
+        }
+        
+        // Update attempts display
+        function updateAttemptsDisplay() {
+            const remaining = PASSWORD_CONFIG.maxAttempts - loginAttempts;
+            attemptsCounter.textContent = `Attempts remaining: ${remaining}`;
+            
+            if (remaining <= 2) {
+                attemptsCounter.style.color = '#e74c3c';
+                attemptsCounter.style.fontWeight = 'bold';
+            } else {
+                attemptsCounter.style.color = '#f39c12';
+            }
+        }
+        
+        // Lock account
+        function lockAccount() {
+            isLocked = true;
+            localStorage.setItem('kabuloh_lock', JSON.stringify({
+                time: Date.now(),
+                attempts: loginAttempts
+            }));
+            
+            errorMessage.textContent = `Account locked for ${PASSWORD_CONFIG.lockoutTime} minutes due to too many failed attempts.`;
+            errorMessage.style.display = 'block';
+            
+            // Disable input and button
+            passwordInput.disabled = true;
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Account Locked';
+            
+            // Start countdown to unlock
+            startLockoutCountdown();
+        }
+        
+        // Show lockout message
+        function showLockoutMessage(lockTime) {
+            const now = Date.now();
+            const remaining = Math.ceil((PASSWORD_CONFIG.lockoutTime * 60 * 1000 - (now - lockTime)) / 60000);
+            
+            errorMessage.textContent = `Account locked. Try again in ${remaining} minutes.`;
+            errorMessage.style.display = 'block';
+            
+            passwordInput.disabled = true;
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Account Locked';
+        }
+        
+        // Start lockout countdown
+        function startLockoutCountdown() {
+            let remaining = PASSWORD_CONFIG.lockoutTime * 60;
+            
+            const countdown = setInterval(() => {
+                remaining--;
+                
+                if (remaining <= 0) {
+                    clearInterval(countdown);
+                    unlockAccount();
+                } else {
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    loginBtn.textContent = `Unlocks in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+        
+        // Unlock account
+        function unlockAccount() {
+            isLocked = false;
+            loginAttempts = 0;
+            localStorage.removeItem('kabuloh_lock');
+            
+            passwordInput.disabled = false;
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Access System';
+            errorMessage.style.display = 'none';
+            updateAttemptsDisplay();
+        }
+        
+        // Show main content
+        function showMainContent() {
+            passwordOverlay.style.display = 'none';
+            mainContent.style.display = 'block';
+            
+            // Initialize the main application
+            initApp();
+            
+            // Reset inactivity timer
+            resetInactivityTimer();
+        }
+        
+        // Start session timer
+        function startSessionTimer() {
+            if (sessionTimer) clearInterval(sessionTimer);
+            
+            let timeLeft = PASSWORD_CONFIG.sessionTimeout * 60;
+            
+            sessionTimer = setInterval(() => {
+                timeLeft--;
+                
+                if (timeLeft <= 0) {
+                    logout();
+                }
+            }, 1000);
+        }
+        
+        // Reset inactivity timer
+        function resetInactivityTimer() {
+            if (currentUser) {
+                currentUser.lastActivity = Date.now();
+                localStorage.setItem('kabuloh_session', JSON.stringify(currentUser));
+            }
+            
+            // Reset the session timer
+            startSessionTimer();
+        }
+        
+        // Logout function
+        function logout() {
+            // Clear session
+            localStorage.removeItem('kabuloh_session');
+            if (sessionTimer) clearInterval(sessionTimer);
+            
+            // Reset state
+            currentUser = null;
+            passwordInput.value = '';
+            
+            // Show password overlay
+            passwordOverlay.style.display = 'flex';
+            mainContent.style.display = 'none';
+            
+            // Reset UI
+            errorMessage.style.display = 'none';
+            passwordInput.disabled = false;
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Access System';
+            
+            // Reset attempts if not locked
+            if (!isLocked) {
+                loginAttempts = 0;
+                updateAttemptsDisplay();
+            }
+            
+            showNotification('Logged out successfully.', false);
+        }
+        
+        // =============================================
+        // MAIN APPLICATION CODE
+        // =============================================
+        
+        // COMPLETE PROJECT DATA
+        const projectData = {
+            projectName: "KABULOH PRECISION FARMING PARK - PHASE 2",
+            startDate: "2025-10-07",
+            endDate: "2027-01-06",
+            currentDate: new Date().toISOString().split('T')[0],
+            plannedProgress: 32,
+            actualProgress: 0,
+            lastUpdated: new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }),
+            
+            // Monthly planned and actual progress for S-Curve
+            monthlyProgress: [
+                { month: "Oct 2025", planned: 5, actual: 0 },
+                { month: "Nov 2025", planned: 12, actual: 0 },
+                { month: "Dec 2025", planned: 20, actual: 0 },
+                { month: "Jan 2026", planned: 28, actual: 0 },
+                { month: "Feb 2026", planned: 35, actual: 0 },
+                { month: "Mar 2026", planned: 42, actual: 0 },
+                { month: "Apr 2026", planned: 50, actual: 0 },
+                { month: "May 2026", planned: 58, actual: 0 },
+                { month: "Jun 2026", planned: 65, actual: 0 },
+                { month: "Jul 2026", planned: 72, actual: 0 },
+                { month: "Aug 2026", planned: 78, actual: 0 },
+                { month: "Sep 2026", planned: 83, actual: 0 },
+                { month: "Oct 2026", planned: 87, actual: 0 },
+                { month: "Nov 2026", planned: 90, actual: 0 },
+                { month: "Dec 2026", planned: 93, actual: 0 },
+                { month: "Jan 2027", planned: 100, actual: 0 }
+            ],
+            
+            tasks: [
+                {
+                    id: 1,
+                    name: "PRELIMINARIES",
+                    start: "2025-10-07",
+                    end: "2025-12-30",
+                    plannedProgress: 85,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 101, name: "Site Handover & Mobilization", start: "2025-10-07", end: "2025-10-08", plannedProgress: 100, actualProgress: 0 },
+                        { id: 102, name: "Site Clearing and Preparation", start: "2025-10-09", end: "2025-10-10", plannedProgress: 100, actualProgress: 0 },
+                        { id: 103, name: "Temporary Facilities & Utilities", start: "2025-10-13", end: "2025-10-14", plannedProgress: 100, actualProgress: 0 },
+                        { id: 104, name: "Site Fencing & Hoarding", start: "2025-10-15", end: "2025-10-16", plannedProgress: 100, actualProgress: 0 },
+                        { id: 105, name: "Safety, Signage and Access Control", start: "2025-10-17", end: "2025-10-20", plannedProgress: 100, actualProgress: 0 },
+                        { id: 106, name: "Survey Works & Setting Out", start: "2025-10-21", end: "2025-12-30", plannedProgress: 65, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "PILING WORKS",
+                    start: "2025-12-30",
+                    end: "2026-03-19",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 201, name: "ADMIN BLOCK & CPPC Piling", start: "2025-12-30", end: "2026-02-13", plannedProgress: 20, actualProgress: 0 },
+                        { id: 202, name: "PUMP HOUSE Piling", start: "2026-02-14", end: "2026-03-01", plannedProgress: 0, actualProgress: 0 },
+                        { id: 203, name: "MYGAP STORE Piling", start: "2026-03-02", end: "2026-03-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 204, name: "PESTICIDE CONTAINER DISPOSAL CENTRE Piling", start: "2026-03-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 205, name: "GENERAL TOOL SHED Piling", start: "2026-03-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 206, name: "GUARD HOUSE Piling", start: "2026-03-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "ADMIN BLOCK & CPPC",
+                    start: "2025-10-13",
+                    end: "2027-02-12",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 301, name: "Earth Work Leveling", start: "2025-10-13", end: "2025-12-31", plannedProgress: 30, actualProgress: 0 },
+                        { id: 302, name: "Pile Cap & Stumps", start: "2026-02-13", end: "2026-03-30", plannedProgress: 5, actualProgress: 0 },
+                        { id: 303, name: "Ground Beams", start: "2026-03-31", end: "2026-04-05", plannedProgress: 0, actualProgress: 0 },
+                        { id: 304, name: "Slab", start: "2026-04-05", end: "2026-04-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 305, name: "Columns", start: "2026-04-30", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 306, name: "Roof slab", start: "2026-04-30", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 307, name: "Walkway/Drainage/Ramp", start: "2026-04-30", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 308, name: "Steel Fabrication Works", start: "2026-04-01", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 309, name: "Steel Installation Works", start: "2026-06-01", end: "2026-08-01", plannedProgress: 0, actualProgress: 0 },
+                        { id: 310, name: "Roofing Installation", start: "2026-08-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 311, name: "Rainwater goods and accessories", start: "2026-10-01", end: "2026-10-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 312, name: "External and Internal Walls", start: "2026-10-01", end: "2026-10-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 313, name: "Door and Windows", start: "2026-11-01", end: "2026-11-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 314, name: "Metal Cladding Walls", start: "2026-11-16", end: "2026-11-25", plannedProgress: 0, actualProgress: 0 },
+                        { id: 315, name: "Ceiling Works", start: "2026-11-16", end: "2026-11-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 316, name: "Floor finishes", start: "2026-12-01", end: "2026-12-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 317, name: "PAINTING", start: "2026-11-16", end: "2026-11-25", plannedProgress: 0, actualProgress: 0 },
+                        { id: 318, name: "Internal Cold Water/Plumbing System", start: "2026-03-31", end: "2026-12-01", plannedProgress: 0, actualProgress: 0 },
+                        { id: 319, name: "Fire Protection System", start: "2026-11-01", end: "2026-12-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 320, name: "Internal Electrical services", start: "2026-03-31", end: "2026-12-01", plannedProgress: 0, actualProgress: 0 },
+                        { id: 321, name: "Lighting", start: "2026-11-02", end: "2026-12-31", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 4,
+                    name: "PUMP HOUSE",
+                    start: "2025-10-13",
+                    end: "2026-10-15",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 401, name: "Earth Work Leveling", start: "2025-10-13", end: "2025-12-31", plannedProgress: 10, actualProgress: 0 },
+                        { id: 402, name: "Pile Cap & Stumps", start: "2026-03-02", end: "2026-03-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 403, name: "Ground Beams", start: "2026-03-31", end: "2026-05-05", plannedProgress: 0, actualProgress: 0 },
+                        { id: 404, name: "Slab", start: "2026-05-06", end: "2026-06-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 405, name: "Columns", start: "2026-06-11", end: "2026-06-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 406, name: "Roof Structure Installation", start: "2026-09-01", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 407, name: "Metal Cladding Works", start: "2026-10-01", end: "2026-10-15", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 5,
+                    name: "MYGAP STORE",
+                    start: "2026-02-10",
+                    end: "2026-12-15",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 501, name: "Earth Work Leveling", start: "2026-02-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 502, name: "Pile Cap & Stumps", start: "2026-03-20", end: "2026-03-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 503, name: "Ground Beams", start: "2026-04-01", end: "2026-04-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 504, name: "Slab", start: "2026-04-16", end: "2026-04-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 505, name: "Columns", start: "2026-05-01", end: "2026-05-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 506, name: "Roof Beam", start: "2026-05-11", end: "2026-05-20", plannedProgress: 0, actualProgress: 0 },
+                        { id: 507, name: "Roof slab", start: "2026-05-21", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 508, name: "Roofing Installation", start: "2026-08-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 509, name: "External and Internal Walls", start: "2026-11-01", end: "2026-11-20", plannedProgress: 0, actualProgress: 0 },
+                        { id: 510, name: "Door and Windows", start: "2026-11-21", end: "2026-11-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 511, name: "Floor finishes", start: "2026-12-01", end: "2026-12-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 512, name: "Internal Cold Water/Plumbing System", start: "2026-04-01", end: "2026-12-01", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 6,
+                    name: "PESTICIDE CONTAINER DISPOSAL CENTRE",
+                    start: "2026-02-10",
+                    end: "2026-10-31",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 601, name: "Earth Work Leveling", start: "2026-02-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 602, name: "Pile Cap & Stumps", start: "2026-03-20", end: "2026-03-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 603, name: "Ground Beams", start: "2026-04-01", end: "2026-04-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 604, name: "Slab", start: "2026-04-16", end: "2026-04-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 605, name: "Columns", start: "2026-05-01", end: "2026-05-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 606, name: "Roof Beam", start: "2026-05-11", end: "2026-05-20", plannedProgress: 0, actualProgress: 0 },
+                        { id: 607, name: "Roof slab", start: "2026-05-21", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 608, name: "Roofing Installation", start: "2026-08-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 609, name: "External Wall", start: "2026-06-01", end: "2026-06-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 610, name: "Floor finishes", start: "2026-06-01", end: "2026-06-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 611, name: "Internal Cold Water/Plumbing System", start: "2026-06-01", end: "2026-06-15", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 7,
+                    name: "GENERAL TOOL SHED",
+                    start: "2026-02-10",
+                    end: "2026-10-31",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 701, name: "Earth Work Leveling", start: "2026-02-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 702, name: "Pile Cap & Stumps", start: "2026-03-20", end: "2026-03-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 703, name: "Ground Beams", start: "2026-05-01", end: "2026-05-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 704, name: "Slab", start: "2026-05-11", end: "2026-05-20", plannedProgress: 0, actualProgress: 0 },
+                        { id: 705, name: "Columns", start: "2026-05-21", end: "2026-05-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 706, name: "Roof Beam", start: "2026-06-01", end: "2026-06-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 707, name: "Roofing Installation", start: "2026-08-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 708, name: "External Wall", start: "2026-06-15", end: "2026-06-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 709, name: "Door and Window installation", start: "2026-07-01", end: "2026-07-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 710, name: "Floor finishes", start: "2026-07-01", end: "2026-07-15", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 8,
+                    name: "GUARD HOUSE",
+                    start: "2026-02-10",
+                    end: "2026-12-15",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 801, name: "Earth Work Leveling", start: "2026-02-10", end: "2026-03-19", plannedProgress: 0, actualProgress: 0 },
+                        { id: 802, name: "Pile Cap & Stumps", start: "2026-03-20", end: "2026-03-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 803, name: "Ground Beams", start: "2026-04-01", end: "2026-04-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 804, name: "Slab", start: "2026-04-16", end: "2026-04-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 805, name: "Columns", start: "2026-05-01", end: "2026-05-10", plannedProgress: 0, actualProgress: 0 },
+                        { id: 806, name: "Roofing Installation", start: "2026-08-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 807, name: "External and Internal Walls", start: "2026-11-01", end: "2026-11-20", plannedProgress: 0, actualProgress: 0 },
+                        { id: 808, name: "Door and Windows", start: "2026-11-21", end: "2026-11-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 809, name: "Floor finishes", start: "2026-12-01", end: "2026-12-15", plannedProgress: 0, actualProgress: 0 },
+                        { id: 810, name: "Internal Cold Water/Plumbing System", start: "2026-04-01", end: "2026-12-01", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 9,
+                    name: "INFRASTRUCTURE WORKS",
+                    start: "2026-05-01",
+                    end: "2026-10-31",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 901, name: "Road Base", start: "2026-08-01", end: "2026-09-01", plannedProgress: 0, actualProgress: 0 },
+                        { id: 902, name: "Pavement", start: "2026-09-02", end: "2026-09-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 903, name: "Road Marking and Signages", start: "2026-10-01", end: "2026-10-31", plannedProgress: 0, actualProgress: 0 },
+                        { id: 904, name: "Earth Drains", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 905, name: "Reinforced Concrete Drains", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 906, name: "Concrete Culvert", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 907, name: "Manhole", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 908, name: "Soil Drainage pipe", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 909, name: "Septic Tank", start: "2026-05-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 910, name: "Water Pipe System", start: "2026-06-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 911, name: "Water Tanks", start: "2026-07-01", end: "2026-07-30", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 10,
+                    name: "GATE & FENCING",
+                    start: "2026-09-01",
+                    end: "2026-12-31",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 1001, name: "FENCING", start: "2026-09-01", end: "2026-11-30", plannedProgress: 0, actualProgress: 0 },
+                        { id: 1002, name: "GATE", start: "2026-12-01", end: "2026-12-31", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                },
+                {
+                    id: 11,
+                    name: "COMPLETION & HANDOVER",
+                    start: "2027-01-01",
+                    end: "2027-01-06",
+                    plannedProgress: 0,
+                    actualProgress: 0,
+                    subtasks: [
+                        { id: 1101, name: "Final Cleaning", start: "2027-01-01", end: "2027-01-05", plannedProgress: 0, actualProgress: 0 },
+                        { id: 1102, name: "Handover to Client", start: "2027-01-06", end: "2027-01-06", plannedProgress: 0, actualProgress: 0 }
+                    ]
+                }
+            ]
+        };
+
+        // DOM Elements for main app
+        const progressPanel = document.getElementById('progress-panel');
+        const sCurvePanel = document.getElementById('s-curve-panel');
+        const reportPanel = document.getElementById('report-panel');
+        const taskList = document.getElementById('task-list');
+        const tabs = document.querySelectorAll('.tab');
+        const currentDateElement = document.getElementById('current-date');
+        const currentMonthElement = document.getElementById('current-month');
+        const plannedOverallElement = document.getElementById('planned-overall');
+        const actualOverallElement = document.getElementById('actual-overall');
+        const plannedBar = document.getElementById('planned-bar');
+        const actualBar = document.getElementById('actual-bar');
+        const progressVarianceElement = document.getElementById('progress-variance');
+        const lastUpdatedElement = document.getElementById('last-updated');
+        const totalTasksElement = document.getElementById('total-tasks');
+        const monthSelector = document.getElementById('month-selector');
+        const reportMonthElement = document.getElementById('report-month');
+        const generateTxtBtn = document.getElementById('generate-txt');
+        const generatePdfBtn = document.getElementById('generate-pdf');
+        const shareWhatsappBtn = document.getElementById('share-whatsapp');
+        const shareEmailBtn = document.getElementById('share-email');
+        const saveProgressBtn = document.getElementById('save-progress-btn');
+        const quickReportBtn = document.getElementById('quick-report-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        // Chart variables
+        let sCurveChart = null;
+        let selectedMonthIndex = 0;
+
+        // Initialize the main app
+        function initApp() {
+            updateCurrentDate();
+            renderTaskList();
+            loadSavedProgress();
+            generateMonthSelector();
+            setupAppEventListeners();
+            updateOverallProgress();
+            updateTotalTasksCount();
+            renderSCurve();
+            
+            // Setup logout button
+            logoutBtn.addEventListener('click', logout);
+        }
+
+        // Update current date display
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            currentDateElement.textContent = now.toLocaleDateString('en-US', options);
+            
+            const monthOptions = { year: 'numeric', month: 'long' };
+            currentMonthElement.textContent = now.toLocaleDateString('en-US', monthOptions);
+        }
+
+        // Update total tasks count
+        function updateTotalTasksCount() {
+            let totalTasks = 0;
+            projectData.tasks.forEach(task => {
+                if (task.subtasks) {
+                    totalTasks += task.subtasks.length;
+                }
+            });
+            totalTasksElement.textContent = totalTasks;
+        }
+
+        // Generate month selector for reports
+        function generateMonthSelector() {
+            monthSelector.innerHTML = '';
+            
+            projectData.monthlyProgress.forEach((monthData, index) => {
+                const monthBtn = document.createElement('button');
+                monthBtn.className = `month-btn ${index === selectedMonthIndex ? 'active' : ''}`;
+                monthBtn.textContent = monthData.month;
+                monthBtn.dataset.index = index;
+                
+                monthBtn.addEventListener('click', function() {
+                    selectedMonthIndex = parseInt(this.dataset.index);
+                    reportMonthElement.textContent = projectData.monthlyProgress[selectedMonthIndex].month;
+                    
+                    document.querySelectorAll('.month-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+                
+                monthSelector.appendChild(monthBtn);
+            });
+            
+            if (projectData.monthlyProgress.length > 0) {
+                reportMonthElement.textContent = projectData.monthlyProgress[selectedMonthIndex].month;
+            }
+        }
+
+        // Render the task list
+        function renderTaskList() {
+            taskList.innerHTML = '';
+            
+            if (projectData.tasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <p>No tasks available.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            projectData.tasks.forEach(task => {
+                if (task.subtasks && task.subtasks.length > 0) {
+                    const plannedSubtaskProgress = task.subtasks.reduce((sum, subtask) => sum + subtask.plannedProgress, 0);
+                    const actualSubtaskProgress = task.subtasks.reduce((sum, subtask) => sum + subtask.actualProgress, 0);
+                    
+                    task.plannedProgress = Math.round(plannedSubtaskProgress / task.subtasks.length);
+                    task.actualProgress = Math.round(actualSubtaskProgress / task.subtasks.length);
+                }
+                
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task-category';
+                taskElement.innerHTML = `
+                    <div class="category-header" data-task-id="${task.id}">
+                        <div>
+                            <div class="category-title">
+                                <i class="fas fa-folder"></i> ${task.name}
+                            </div>
+                            <div class="category-dates">
+                                <span><i class="far fa-calendar-alt"></i> ${formatDate(task.start)}</span>
+                                <span><i class="far fa-calendar-check"></i> ${formatDate(task.end)}</span>
+                            </div>
+                        </div>
+                        <div class="category-progress">
+                            <div class="planned-text">Planned: ${task.plannedProgress}%</div>
+                            <div class="actual-text">Actual: ${task.actualProgress}%</div>
+                        </div>
+                    </div>
+                    <div class="task-items" id="task-items-${task.id}">
+                        ${renderSubtasks(task.subtasks, task.id)}
+                    </div>
+                `;
+                
+                taskList.appendChild(taskElement);
+            });
+            
+            document.querySelectorAll('.category-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const taskId = this.getAttribute('data-task-id');
+                    const taskItems = document.getElementById(`task-items-${taskId}`);
+                    taskItems.classList.toggle('expanded');
+                    
+                    const icon = this.querySelector('i');
+                    if (taskItems.classList.contains('expanded')) {
+                        icon.className = 'fas fa-folder-open';
+                    } else {
+                        icon.className = 'fas fa-folder';
+                    }
+                });
+            });
+        }
+
+        // Render subtasks
+        function renderSubtasks(subtasks, parentId) {
+            if (!subtasks || subtasks.length === 0) {
+                return '<div class="empty-state"><i class="fas fa-tasks"></i><p>No subtasks available</p></div>';
+            }
+            
+            return subtasks.map(subtask => {
+                const variance = subtask.actualProgress - subtask.plannedProgress;
+                const varianceDisplay = variance >= 0 ? `+${variance}%` : `${variance}%`;
+                const varianceColor = variance >= 0 ? 'var(--success)' : 'var(--danger)';
+                
+                return `
+                <div class="task-item" data-task-id="${subtask.id}" data-parent-id="${parentId}">
+                    <div class="task-info">
+                        <div class="task-name">${subtask.name}</div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <div class="actual-text" style="font-weight: 700; font-size: 1.2rem;">${subtask.actualProgress}%</div>
+                            <div style="font-size: 0.8rem; color: ${varianceColor}; font-weight: 600;">
+                                ${varianceDisplay}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-dates">
+                        <span>Start: ${formatDate(subtask.start)}</span>
+                        <span>End: ${formatDate(subtask.end)}</span>
+                        <span>Planned: ${subtask.plannedProgress}%</span>
+                    </div>
+                    
+                    <div class="progress-bars-small">
+                        <div class="progress-bar-small-container">
+                            <div class="progress-bar-small planned" style="width: ${subtask.plannedProgress}%"></div>
+                        </div>
+                        <div class="progress-bar-small-container">
+                            <div class="progress-bar-small actual" style="width: ${subtask.actualProgress}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-bar-labels">
+                        <span>Planned</span>
+                        <span>Actual</span>
+                    </div>
+                    
+                    <div class="progress-input-row">
+                        <input type="number" 
+                               class="progress-input" 
+                               id="input-${subtask.id}"
+                               min="0" 
+                               max="100" 
+                               value="${subtask.actualProgress}"
+                               placeholder="Enter actual progress %">
+                        <button class="btn-update" onclick="updateSubtaskProgress(${subtask.id}, ${parentId})">
+                            <i class="fas fa-check"></i> Update
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // Update subtask progress
+        window.updateSubtaskProgress = function(subtaskId, parentId) {
+            const inputElement = document.getElementById(`input-${subtaskId}`);
+            const newProgress = parseInt(inputElement.value);
+            
+            if (isNaN(newProgress) || newProgress < 0 || newProgress > 100) {
+                showNotification('Please enter a valid percentage between 0 and 100', true);
+                return;
+            }
+            
+            for (const task of projectData.tasks) {
+                if (task.id === parentId) {
+                    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
+                    if (subtaskIndex !== -1) {
+                        task.subtasks[subtaskIndex].actualProgress = newProgress;
+                        break;
+                    }
+                }
+            }
+            
+            updateOverallProgress();
+            renderTaskList();
+            renderSCurve();
+            showNotification(`Progress updated to ${newProgress}%`);
+            saveProgress();
+        };
+
+        // Update overall progress
+        function updateOverallProgress() {
+            let totalSubtasks = 0;
+            let totalPlannedProgress = 0;
+            let totalActualProgress = 0;
+            
+            projectData.tasks.forEach(task => {
+                if (task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                        totalSubtasks++;
+                        totalPlannedProgress += subtask.plannedProgress;
+                        totalActualProgress += subtask.actualProgress;
+                    });
+                }
+            });
+            
+            const overallPlannedProgress = Math.round(totalPlannedProgress / totalSubtasks);
+            const overallActualProgress = Math.round(totalActualProgress / totalSubtasks);
+            const variance = overallActualProgress - overallPlannedProgress;
+            
+            plannedOverallElement.textContent = `${overallPlannedProgress}%`;
+            actualOverallElement.textContent = `${overallActualProgress}%`;
+            plannedBar.style.width = `${overallPlannedProgress}%`;
+            plannedBar.textContent = `${overallPlannedProgress}%`;
+            actualBar.style.width = `${overallActualProgress}%`;
+            actualBar.textContent = `${overallActualProgress}%`;
+            
+            progressVarianceElement.textContent = `${variance >= 0 ? '+' : ''}${variance}%`;
+            progressVarianceElement.style.color = variance >= 0 ? 'var(--success)' : 'var(--danger)';
+            
+            projectData.plannedProgress = overallPlannedProgress;
+            projectData.actualProgress = overallActualProgress;
+            projectData.lastUpdated = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            lastUpdatedElement.textContent = 'Today';
+        }
+
+        // Render S-Curve - CORRECTED VERSION
+        // Actual progress line only shows for months where actual progress > 0%
+        function renderSCurve() {
+            const ctx = document.getElementById('s-curve-chart').getContext('2d');
+            if (sCurveChart) sCurveChart.destroy();
+            
+            const months = projectData.monthlyProgress.map(m => m.month);
+            const plannedData = projectData.monthlyProgress.map(m => m.planned);
+            const actualData = projectData.monthlyProgress.map(m => m.actual);
+            
+            // Check if there's any actual progress
+            const hasAnyActualProgress = actualData.some(value => value > 0);
+            
+            // Create datasets
+            const datasets = [
+                {
+                    label: 'Planned Progress',
+                    data: plannedData,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3498db',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ];
+            
+            if (hasAnyActualProgress) {
+                // Create actual progress data with null for 0% values to break the line
+                const actualLineData = actualData.map(value => value > 0 ? value : null);
+                
+                datasets.push({
+                    label: 'Actual Progress',
+                    data: actualLineData,
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0,
+                    pointBackgroundColor: actualData.map(value => value > 0 ? '#2ecc71' : 'transparent'),
+                    pointRadius: actualData.map(value => value > 0 ? 6 : 0),
+                    pointHoverRadius: actualData.map(value => value > 0 ? 8 : 0),
+                    spanGaps: false // This breaks the line at null values
+                });
+            }
+            
+            sCurveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14 },
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            titleColor: '#333',
+                            bodyColor: '#666',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            cornerRadius: 6,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (value === null || value === undefined) return null;
+                                    return `${context.dataset.label}: ${value}%`;
+                                },
+                                footer: function(tooltipItems) {
+                                    if (tooltipItems.length === 2 && tooltipItems[1].parsed.y !== null) {
+                                        const planned = tooltipItems[0].parsed.y;
+                                        const actual = tooltipItems[1].parsed.y;
+                                        const variance = actual - planned;
+                                        const varianceText = variance >= 0 ? 
+                                            `+${variance}% ahead` : 
+                                            `${variance}% behind`;
+                                        return `Variance: ${varianceText}`;
+                                    }
+                                    return '';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Months',
+                                color: '#666',
+                                font: { size: 12 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Progress (%)',
+                                color: '#666',
+                                font: { size: 12 }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'nearest'
+                    },
+                    elements: {
+                        line: {
+                            tension: 0 // Straight lines between points
+                        }
+                    }
+                }
+            });
+            
+            // Update legend visibility
+            updateChartLegend();
+        }
+
+        // Update chart legend based on actual progress
+        function updateChartLegend() {
+            const actualData = projectData.monthlyProgress.map(m => m.actual);
+            const hasAnyActualProgress = actualData.some(value => value > 0);
+            
+            const legendItems = document.querySelectorAll('.legend-item');
+            if (legendItems.length > 1) {
+                legendItems[1].style.display = hasAnyActualProgress ? 'flex' : 'none';
+            }
+        }
+
+        // Generate Text Report
+        function generateTextReport() {
+            const selectedMonth = projectData.monthlyProgress[selectedMonthIndex];
+            const reportDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            
+            let report = `KABULOH PRECISION FARMING PARK - PHASE 2\n`;
+            report += `COMPLETE MONTHLY PROGRESS REPORT\n`;
+            report += `========================================\n`;
+            report += `Report Period: ${selectedMonth.month}\n`;
+            report += `Generated: ${reportDate}\n`;
+            report += `Overall Planned: ${projectData.plannedProgress}%\n`;
+            report += `Overall Actual: ${projectData.actualProgress}%\n`;
+            report += `Variance: ${projectData.actualProgress - projectData.plannedProgress}%\n`;
+            report += `========================================\n\n`;
+            
+            report += `TASK-WISE PROGRESS BREAKDOWN\n`;
+            report += `========================================\n\n`;
+            
+            projectData.tasks.forEach(task => {
+                report += `${task.name}\n`;
+                report += `Planned: ${task.plannedProgress}% | Actual: ${task.actualProgress}% | Variance: ${task.actualProgress - task.plannedProgress >= 0 ? '+' : ''}${task.actualProgress - task.plannedProgress}%\n`;
+                
+                task.subtasks.forEach((subtask, index) => {
+                    const variance = subtask.actualProgress - subtask.plannedProgress;
+                    report += `  ${index+1}. ${subtask.name}\n`;
+                    report += `     Planned: ${subtask.plannedProgress}% | Actual: ${subtask.actualProgress}% | Variance: ${variance >= 0 ? '+' : ''}${variance}%\n`;
+                });
+                report += `\n`;
+            });
+            
+            report += `S-CURVE ANALYSIS FOR ${selectedMonth.month}\n`;
+            report += `========================================\n`;
+            report += `Planned: ${selectedMonth.planned}%\n`;
+            report += `Actual: ${selectedMonth.actual}%\n`;
+            report += `Variance: ${selectedMonth.actual - selectedMonth.planned}%\n\n`;
+            
+            report += `RECOMMENDATIONS\n`;
+            report += `========================================\n`;
+            if (projectData.actualProgress < projectData.plannedProgress) {
+                report += `1. Accelerate work on delayed tasks\n`;
+                report += `2. Review resource allocation for critical path items\n`;
+                report += `3. Consider adding overtime or additional shifts\n`;
+                report += `4. Focus on ADMIN BLOCK & CPPC which is on critical path\n`;
+                report += `5. Prioritize infrastructure works to avoid future delays\n`;
+            } else {
+                report += `1. Maintain current work pace\n`;
+                report += `2. Focus on quality control and inspections\n`;
+                report += `3. Plan for upcoming critical activities\n`;
+                report += `4. Ensure materials are ordered for next phase\n`;
+                report += `5. Conduct safety audits regularly\n`;
+            }
+            
+            report += `\n\nPrepared by: Site Supervisor\n`;
+            report += `Kabuloh Precision Farming Park Project Team\n`;
+            
+            return report;
+        }
+
+        // Generate PDF Report
+        function generatePdfReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const selectedMonth = projectData.monthlyProgress[selectedMonthIndex];
+            const reportDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            
+            doc.setFontSize(18);
+            doc.setTextColor(40, 40, 40);
+            doc.text('KABULOH PRECISION FARMING PARK', 105, 20, { align: 'center' });
+            doc.setFontSize(16);
+            doc.text('PHASE 2 - COMPLETE PROGRESS REPORT', 105, 30, { align: 'center' });
+            
+            doc.setFontSize(11);
+            doc.text(`Report Period: ${selectedMonth.month}`, 20, 45);
+            doc.text(`Generated: ${reportDate}`, 20, 52);
+            doc.text(`Overall Planned: ${projectData.plannedProgress}%`, 140, 45);
+            doc.text(`Overall Actual: ${projectData.actualProgress}%`, 140, 52);
+            
+            const chartCanvas = document.getElementById('s-curve-chart');
+            const chartImage = chartCanvas.toDataURL('image/png');
+            doc.addImage(chartImage, 'PNG', 20, 60, 170, 80);
+            
+            let yPosition = 150;
+            doc.setFontSize(12);
+            doc.text('COMPLETE TASK PROGRESS BREAKDOWN', 20, yPosition);
+            yPosition += 10;
+            
+            const tableData = [];
+            projectData.tasks.forEach(task => {
+                const variance = task.actualProgress - task.plannedProgress;
+                tableData.push([
+                    task.name,
+                    `${task.plannedProgress}%`,
+                    `${task.actualProgress}%`,
+                    `${variance >= 0 ? '+' : ''}${variance}%`
+                ]);
+            });
+            
+            doc.autoTable({
+                startY: yPosition,
+                head: [['Task', 'Planned', 'Actual', 'Variance']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [52, 152, 219] },
+                margin: { left: 20 },
+                styles: { fontSize: 9 }
+            });
+            
+            const finalY = doc.lastAutoTable.finalY + 15;
+            doc.setFontSize(12);
+            doc.text('RECOMMENDATIONS', 20, finalY);
+            doc.setFontSize(10);
+            
+            let recommendations = '';
+            if (projectData.actualProgress < projectData.plannedProgress) {
+                recommendations = '1. Accelerate work on delayed tasks\n2. Review resource allocation for critical path items\n3. Consider adding overtime or additional shifts\n4. Focus on ADMIN BLOCK & CPPC which is on critical path\n5. Prioritize infrastructure works to avoid future delays';
+            } else {
+                recommendations = '1. Maintain current work pace\n2. Focus on quality control and inspections\n3. Plan for upcoming critical activities\n4. Ensure materials are ordered for next phase\n5. Conduct safety audits regularly';
+            }
+            
+            doc.text(recommendations, 20, finalY + 10, { maxWidth: 170 });
+            
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Prepared by: Site Supervisor | Kabuloh Precision Farming Park Project Team', 105, 280, { align: 'center' });
+            
+            return doc;
+        }
+
+        // Share via WhatsApp
+        function shareViaWhatsapp() {
+            const textReport = generateTextReport();
+            const shortReport = textReport.length > 2000 ? textReport.substring(0, 2000) + '...' : textReport;
+            const encodedText = encodeURIComponent(shortReport);
+            const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // Share via Email
+        function shareViaEmail() {
+            const textReport = generateTextReport();
+            const subject = encodeURIComponent(`Kabuloh Farm Progress Report - ${projectData.monthlyProgress[selectedMonthIndex].month}`);
+            const body = encodeURIComponent(textReport);
+            const mailtoUrl = `mailto:?subject=${subject}&body=${body}`;
+            window.location.href = mailtoUrl;
+        }
+
+        // Save progress to localStorage
+        function saveProgress() {
+            try {
+                localStorage.setItem('kabulohProjectProgress_complete', JSON.stringify(projectData));
+                showNotification('Progress saved successfully!');
+            } catch (error) {
+                showNotification('Error saving progress', true);
+            }
+        }
+
+        // Load progress from localStorage
+        function loadSavedProgress() {
+            try {
+                const savedData = localStorage.getItem('kabulohProjectProgress_complete');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    if (parsedData.tasks) {
+                        parsedData.tasks.forEach((savedTask, taskIndex) => {
+                            if (projectData.tasks[taskIndex]) {
+                                savedTask.subtasks.forEach((savedSubtask, subtaskIndex) => {
+                                    if (projectData.tasks[taskIndex].subtasks[subtaskIndex]) {
+                                        projectData.tasks[taskIndex].subtasks[subtaskIndex].actualProgress = savedSubtask.actualProgress;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if (parsedData.monthlyProgress) {
+                        projectData.monthlyProgress = parsedData.monthlyProgress;
+                    }
+                    renderTaskList();
+                    updateOverallProgress();
+                    renderSCurve();
+                }
+            } catch (error) {
+                console.log('No saved progress found');
+            }
+        }
+
+        // Reset to original data
+        function resetProgress() {
+            if (confirm('Reset all progress to original values?')) {
+                projectData.tasks.forEach(task => {
+                    if (task.subtasks) {
+                        task.subtasks.forEach(subtask => {
+                            subtask.actualProgress = 0;
+                        });
+                    }
+                });
+                projectData.monthlyProgress.forEach(month => month.actual = 0);
+                renderTaskList();
+                updateOverallProgress();
+                renderSCurve();
+                localStorage.removeItem('kabulohProjectProgress_complete');
+                showNotification('Progress reset complete');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) existingNotification.remove();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${isError ? 'error' : ''}`;
+            notification.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i><span>${message}</span>`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Setup app event listeners
+        function setupAppEventListeners() {
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    progressPanel.style.display = 'none';
+                    sCurvePanel.classList.remove('active');
+                    reportPanel.classList.remove('active');
+                    taskList.style.display = 'none';
+                    
+                    if (tabName === 'progress') {
+                        progressPanel.style.display = 'block';
+                        taskList.style.display = 'block';
+                    } else if (tabName === 's-curve') {
+                        sCurvePanel.classList.add('active');
+                        setTimeout(() => sCurveChart && sCurveChart.resize(), 100);
+                    } else if (tabName === 'reports') {
+                        reportPanel.classList.add('active');
+                    }
+                });
+            });
+            
+            generateTxtBtn.addEventListener('click', function() {
+                const textReport = generateTextReport();
+                const blob = new Blob([textReport], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Kabuloh_Report_${projectData.monthlyProgress[selectedMonthIndex].month.replace(' ', '_')}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showNotification('Text report downloaded');
+            });
+            
+            generatePdfBtn.addEventListener('click', function() {
+                const pdf = generatePdfReport();
+                pdf.save(`Kabuloh_Report_${projectData.monthlyProgress[selectedMonthIndex].month.replace(' ', '_')}.pdf`);
+                showNotification('PDF report downloaded');
+            });
+            
+            shareWhatsappBtn.addEventListener('click', shareViaWhatsapp);
+            shareEmailBtn.addEventListener('click', shareViaEmail);
+            
+            saveProgressBtn.addEventListener('click', saveProgress);
+            quickReportBtn.addEventListener('click', function() {
+                tabs.forEach(t => t.classList.remove('active'));
+                document.querySelector('[data-tab="reports"]').classList.add('active');
+                progressPanel.style.display = 'none';
+                sCurvePanel.classList.remove('active');
+                reportPanel.classList.add('active');
+                taskList.style.display = 'none';
+            });
+            
+            resetBtn.addEventListener('click', resetProgress);
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initPasswordSystem();
+        });
+    </script>
+</body>
+</html>
