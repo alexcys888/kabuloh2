@@ -1067,10 +1067,6 @@
         function initPasswordSystem() {
             console.log("Initializing password system...");
             
-            // For testing: Uncomment to clear session
-            // localStorage.removeItem('kabuloh_session');
-            // localStorage.removeItem('kabuloh_lock');
-            
             // Check for existing session
             const savedSession = localStorage.getItem('kabuloh_session');
             if (savedSession) {
@@ -1631,6 +1627,7 @@
         // Initialize the main app
         function initApp() {
             updateCurrentDate();
+            updatePlannedProgressBasedOnDate(); // NEW: Update planned progress based on current date
             renderTaskList();
             loadSavedProgress();
             generateMonthSelector();
@@ -1641,6 +1638,70 @@
             
             // Setup logout button
             logoutBtn.addEventListener('click', logout);
+        }
+
+        // NEW: Calculate planned progress based on current date
+        function updatePlannedProgressBasedOnDate() {
+            const currentDate = new Date(projectData.currentDate);
+            
+            // Function to calculate progress percentage based on date
+            function calculateProgress(startDateStr, endDateStr, currentDate) {
+                const startDate = new Date(startDateStr);
+                const endDate = new Date(endDateStr);
+                
+                // If current date is before start date, progress is 0%
+                if (currentDate < startDate) return 0;
+                
+                // If current date is after end date, progress is 100%
+                if (currentDate > endDate) return 100;
+                
+                // Calculate percentage of time elapsed
+                const totalDuration = endDate - startDate;
+                const elapsedDuration = currentDate - startDate;
+                const percentage = Math.round((elapsedDuration / totalDuration) * 100);
+                
+                return Math.min(percentage, 100);
+            }
+            
+            // Update ADMIN BLOCK - Earth Work Leveling (Task 3, subtask 301)
+            const adminBlockEarthTask = projectData.tasks[2].subtasks[0]; // ID 301
+            adminBlockEarthTask.plannedProgress = calculateProgress(
+                adminBlockEarthTask.start,
+                adminBlockEarthTask.end,
+                currentDate
+            );
+            
+            // Update MYGAP STORE - Earth Work Leveling (Task 5, subtask 501)
+            const mygapStoreEarthTask = projectData.tasks[4].subtasks[0]; // ID 501
+            mygapStoreEarthTask.plannedProgress = calculateProgress(
+                mygapStoreEarthTask.start,
+                mygapStoreEarthTask.end,
+                currentDate
+            );
+            
+            // Also update other tasks that should have time-based progress
+            // Update PRELIMINARIES - Survey Works & Setting Out (Task 1, subtask 106)
+            const preliminariesSurvey = projectData.tasks[0].subtasks[5]; // ID 106
+            preliminariesSurvey.plannedProgress = calculateProgress(
+                preliminariesSurvey.start,
+                preliminariesSurvey.end,
+                currentDate
+            );
+            
+            // Update ADMIN BLOCK - Earth Work Leveling for Pump House (Task 4, subtask 401)
+            const pumpHouseEarth = projectData.tasks[3].subtasks[0]; // ID 401
+            pumpHouseEarth.plannedProgress = calculateProgress(
+                pumpHouseEarth.start,
+                pumpHouseEarth.end,
+                currentDate
+            );
+            
+            console.log("Planned progress updated based on current date:", {
+                adminBlock: adminBlockEarthTask.plannedProgress,
+                mygapStore: mygapStoreEarthTask.plannedProgress,
+                preliminaries: preliminariesSurvey.plannedProgress,
+                pumpHouse: pumpHouseEarth.plannedProgress
+            });
         }
 
         // Update current date display
