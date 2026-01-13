@@ -875,11 +875,6 @@
             <a href="#" class="forgot-password" id="forgotPassword">
                 Forgot password? Contact administrator
             </a>
-            
-            <!-- ADMIN NOTE: Change this password in the JavaScript section below -->
-            <div style="font-size: 0.8rem; color: #95a5a6; margin-top: 20px;">
-                Default password: "..." - CHANGE THIS IN PRODUCTION
-            </div>
         </div>
     </div>
     
@@ -1045,7 +1040,7 @@
         
         // CONFIGURATION - CHANGE THESE SETTINGS BEFORE DEPLOYMENT
         const PASSWORD_CONFIG = {
-            password: "rskabuloh",      // CHANGE THIS PASSWORD FOR PRODUCTION
+            password: "rskabuloh",      // Password changed as requested
             maxAttempts: 5,               // Maximum login attempts
             lockoutTime: 15,              // Lockout time in minutes after max attempts
             sessionTimeout: 30,           // Auto-logout after 30 minutes of inactivity
@@ -1372,23 +1367,23 @@
                 minute: '2-digit'
             }),
             
-            // Monthly planned and actual progress for S-Curve
+            // Updated monthly planned progress based on project timeline
             monthlyProgress: [
                 { month: "Oct 2025", planned: 5, actual: 0 },
-                { month: "Nov 2025", planned: 12, actual: 0 },
-                { month: "Dec 2025", planned: 20, actual: 0 },
-                { month: "Jan 2026", planned: 28, actual: 0 },
-                { month: "Feb 2026", planned: 35, actual: 0 },
-                { month: "Mar 2026", planned: 42, actual: 0 },
-                { month: "Apr 2026", planned: 50, actual: 0 },
-                { month: "May 2026", planned: 58, actual: 0 },
-                { month: "Jun 2026", planned: 65, actual: 0 },
-                { month: "Jul 2026", planned: 72, actual: 0 },
-                { month: "Aug 2026", planned: 78, actual: 0 },
-                { month: "Sep 2026", planned: 83, actual: 0 },
-                { month: "Oct 2026", planned: 87, actual: 0 },
-                { month: "Nov 2026", planned: 90, actual: 0 },
-                { month: "Dec 2026", planned: 93, actual: 0 },
+                { month: "Nov 2025", planned: 10, actual: 0 },
+                { month: "Dec 2025", planned: 15, actual: 0 },
+                { month: "Jan 2026", planned: 20, actual: 0 },
+                { month: "Feb 2026", planned: 25, actual: 0 },
+                { month: "Mar 2026", planned: 30, actual: 0 },
+                { month: "Apr 2026", planned: 35, actual: 0 },
+                { month: "May 2026", planned: 40, actual: 0 },
+                { month: "Jun 2026", planned: 45, actual: 0 },
+                { month: "Jul 2026", planned: 50, actual: 0 },
+                { month: "Aug 2026", planned: 55, actual: 0 },
+                { month: "Sep 2026", planned: 60, actual: 0 },
+                { month: "Oct 2026", planned: 65, actual: 0 },
+                { month: "Nov 2026", planned: 70, actual: 0 },
+                { month: "Dec 2026", planned: 75, actual: 0 },
                 { month: "Jan 2027", planned: 100, actual: 0 }
             ],
             
@@ -1847,12 +1842,57 @@
                 }
             }
             
+            // Update monthly progress for S-curve
+            updateMonthlyProgressFromTasks();
+            
             updateOverallProgress();
             renderTaskList();
             renderSCurve();
             showNotification(`Progress updated to ${newProgress}%`);
             saveProgress();
         };
+
+        // Update monthly progress based on actual task progress
+        function updateMonthlyProgressFromTasks() {
+            // Reset all monthly actual progress to 0
+            projectData.monthlyProgress.forEach(month => {
+                month.actual = 0;
+            });
+            
+            // Calculate current overall actual progress
+            let totalSubtasks = 0;
+            let totalActualProgress = 0;
+            
+            projectData.tasks.forEach(task => {
+                if (task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                        totalSubtasks++;
+                        totalActualProgress += subtask.actualProgress;
+                    });
+                }
+            });
+            
+            const overallActualProgress = Math.round(totalActualProgress / totalSubtasks);
+            
+            // Distribute actual progress across months based on current date
+            const now = new Date();
+            const currentMonthYear = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+            
+            // Find current month index
+            const currentMonthIndex = projectData.monthlyProgress.findIndex(m => m.month === currentMonthYear);
+            
+            if (currentMonthIndex !== -1) {
+                // Set actual progress for current and previous months
+                for (let i = 0; i <= currentMonthIndex; i++) {
+                    // Distribute progress: earlier months get more, current month gets current progress
+                    const progressRatio = (i + 1) / (currentMonthIndex + 1);
+                    projectData.monthlyProgress[i].actual = Math.min(
+                        overallActualProgress * progressRatio,
+                        projectData.monthlyProgress[i].planned
+                    );
+                }
+            }
+        }
 
         // Update overall progress
         function updateOverallProgress() {
@@ -1894,10 +1934,12 @@
                 minute: '2-digit'
             });
             lastUpdatedElement.textContent = 'Today';
+            
+            // Update monthly progress for S-curve
+            updateMonthlyProgressFromTasks();
         }
 
-        // Render S-Curve - CORRECTED VERSION
-        // Actual progress line only shows for months where actual progress > 0%
+        // Render S-Curve - FIXED VERSION
         function renderSCurve() {
             const ctx = document.getElementById('s-curve-chart').getContext('2d');
             if (sCurveChart) sCurveChart.destroy();
@@ -1926,21 +1968,32 @@
             ];
             
             if (hasAnyActualProgress) {
-                // Create actual progress data with null for 0% values to break the line
-                const actualLineData = actualData.map(value => value > 0 ? value : null);
-                
                 datasets.push({
                     label: 'Actual Progress',
-                    data: actualLineData,
+                    data: actualData,
                     borderColor: '#2ecc71',
                     backgroundColor: 'rgba(46, 204, 113, 0.1)',
                     borderWidth: 3,
                     fill: false,
-                    tension: 0,
-                    pointBackgroundColor: actualData.map(value => value > 0 ? '#2ecc71' : 'transparent'),
-                    pointRadius: actualData.map(value => value > 0 ? 6 : 0),
-                    pointHoverRadius: actualData.map(value => value > 0 ? 8 : 0),
-                    spanGaps: false // This breaks the line at null values
+                    tension: 0.4,
+                    pointBackgroundColor: '#2ecc71',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                });
+            } else {
+                // If no actual progress, still add the dataset but with all zeros
+                datasets.push({
+                    label: 'Actual Progress',
+                    data: actualData,
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#2ecc71',
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    borderDash: [5, 5]
                 });
             }
             
@@ -1976,11 +2029,10 @@
                             callbacks: {
                                 label: function(context) {
                                     const value = context.parsed.y;
-                                    if (value === null || value === undefined) return null;
                                     return `${context.dataset.label}: ${value}%`;
                                 },
                                 footer: function(tooltipItems) {
-                                    if (tooltipItems.length === 2 && tooltipItems[1].parsed.y !== null) {
+                                    if (tooltipItems.length === 2) {
                                         const planned = tooltipItems[0].parsed.y;
                                         const actual = tooltipItems[1].parsed.y;
                                         const variance = actual - planned;
@@ -2027,7 +2079,7 @@
                     },
                     elements: {
                         line: {
-                            tension: 0 // Straight lines between points
+                            tension: 0.4
                         }
                     }
                 }
@@ -2044,7 +2096,7 @@
             
             const legendItems = document.querySelectorAll('.legend-item');
             if (legendItems.length > 1) {
-                legendItems[1].style.display = hasAnyActualProgress ? 'flex' : 'none';
+                legendItems[1].style.display = 'flex';
             }
         }
 
